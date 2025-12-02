@@ -1,3 +1,3 @@
-# 99Tech Code Challenge #1 #
+# 99Tech Code Challenge #
 
 This is the code challenge for 99Tech

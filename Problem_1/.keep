@@ -1,0 +1,41 @@
+Problem 1: Three ways to sum to n
+
+1. Using a for Loop (Iterative Approach)
+
+```
+    var sum_to_n_a = function(n) {
+    let sum = 0;
+    // Start from 1 and go up to and including n
+    for (let i = 1; i <= n; i++) {
+        sum += i;
+    }
+    return sum;
+    };
+```
+
+2. Using Gauss's Formula
+
+```
+    var sum_to_n_b = function(n) {
+    // Use the direct mathematical formula: n * (n + 1) / 2
+    // We include Math.floor() to ensure the result is an integer, 
+    // though for any integer n, n * (n + 1) is always even, 
+    // so the division by 2 is exact.
+    return Math.floor(n * (n + 1) / 2);
+    };
+```
+
+3. Using Recursion
+
+```
+    var sum_to_n_c = function(n) {
+    // Base case: if n is 0, the sum is 0. 
+    // This stops the recursion.
+    if (n === 0) {
+        return 0;
+    }
+    
+    // Recursive step: n plus the sum of all integers up to n - 1
+    return n + sum_to_n_c(n - 1);
+    };
+```
