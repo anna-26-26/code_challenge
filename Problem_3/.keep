@@ -1,0 +1,110 @@
+Problem 3: Messy React
+
+1. Computational Inefficiencies
+
+  - Incorrect Filtering Logic
+    `lhsPriority` is referenced but never defined inside the callback.
+    Assuming it was meant to be balancePriority, the logic if (balancePriority > -99) { if (balance.amount <= 0) { return true; } } return false means the function only includes balances with amount <= 0 if the priority is valid.
+
+  - Missing useMemo for formattedBalances
+    The `formattedBalances` array is derived directly from `sortedBalances` using a .map()
+    Although `sortedBalances` is memoized, `formattedBalances` is re-calculated on every render where the component's state or props change, even if `sortedBalances` hasn't changed. Improvement: Wrap the `formattedBalances` calculation in its own `useMemo` that depends on `sortedBalances` to prevent unnecessary re-mapping.
+
+  - Mapping Over the Wrong Array
+    The `rows` calculation maps over `sortedBalances` but attempts to access `balance.formatted`, which is a property only available in the `FormattedWalletBalance` type. The `formattedBalances` array is the one that has the formatted property. The current code will likely throw a runtime error or show an undefined amount in `WalletRow`. Improvement: Map over the `formattedBalances` array instead of `sortedBalances`.
+
+
+2. React Anti-Patterns
+
+   - `getPriority` Defined Inside Component
+     The `getPriority` function is a pure utility function that doesn't depend on component props, state, or hooks. Defining it inside the component body means it is re-defined on every render. While the performance cost is minor, it is an anti-pattern. Improvement: Move `getPriority` outside the component function to be defined once globally.
+
+   - Passing Down Redundant Props
+     The component accepts Props extends BoxProps but only uses children (which it ignores) and destructures ...rest to pass to the final <div>. The children are entirely unused/ignored in the return block, making the children prop and the overall prop spreading potentially confusing or unnecessary. Improvement: Only accept and destructure the props you actually intend to use, like { ...rest }.
+     
+
+3. Refactored Code
+
+    import React, { useMemo } from 'react';
+    import { BoxProps } from '@mui/material/Box';
+    import { useWalletBalances } from './hooks/useWalletBalances';
+    import { usePrices } from './hooks/usePrices';
+    import WalletRow from './WalletRow';
+
+    interface WalletBalance {
+    currency: string;
+    amount: number;
+    blockchain: string; 
+    }
+
+    interface FormattedWalletBalance extends WalletBalance {
+    formatted: string;
+    }
+
+    interface Props extends BoxProps {}
+    const getPriority = (blockchain: string): number => {
+    switch (blockchain) {
+        case 'Osmosis':
+        return 100
+        case 'Ethereum':
+        return 50
+        case 'Arbitrum':
+        return 30
+        case 'Zilliqa':
+        return 20
+        case 'Neo':
+        return 20
+        default:
+        return -99 
+    }
+    };
+
+    const WalletPage: React.FC<Props> = (props) => {
+    const { ...rest } = props;
+    const balances = useWalletBalances();
+    const prices = usePrices();
+
+    const sortedBalances = useMemo(() => {
+        const filtered = balances.filter((balance: WalletBalance) => {
+        const balancePriority = getPriority(balance.blockchain);
+        return balancePriority > -99 && balance.amount > 0; 
+        });
+
+        return filtered.sort((lhs: WalletBalance, rhs: WalletBalance) => {
+        const leftPriority = getPriority(lhs.blockchain);
+        const rightPriority = getPriority(rhs.blockchain);
+
+        return rightPriority - leftPriority;
+        
+        });
+    }, [balances]);
+
+    const formattedBalances = useMemo(() => {
+        return sortedBalances.map((balance: WalletBalance): FormattedWalletBalance => {
+        return {
+            ...balance,
+            formatted: balance.amount.toFixed(4) 
+        }
+        })
+    }, [sortedBalances]);
+
+    const rows = formattedBalances.map((balance: FormattedWalletBalance) => {
+        const price = prices[balance.currency] || 0; 
+        const usdValue = price * balance.amount;
+        
+        return (
+        <WalletRow
+            key={balance.currency} 
+            amount={balance.amount}
+            usdValue={usdValue}
+            formattedAmount={balance.formatted}
+        />
+        )
+    });
+
+    return (
+        <div {...rest}>
+        {rows}
+        </div>
+    );
+    };
